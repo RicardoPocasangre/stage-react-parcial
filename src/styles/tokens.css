@@ -1,0 +1,68 @@
+/* Tokens del Design System de la Primera entrega (Figma) */
+:root {
+  --indigo-50: #eef2ff;
+  --indigo-100: #e0e7ff;
+  --indigo-500: #6366f1;
+  --indigo-600: #4f46e5;
+  --indigo-700: #4338ca;
+  --indigo-800: #3730a3;
+  --indigo-950: #1e1b4b;
+  --rose-600: #e11d48;
+  --rose-100: #ffe4e6;
+  --amber-100: #fef3c7;
+  --amber-700: #b45309;
+  --gray-0: #ffffff;
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e1;
+  --gray-500: #64748b;
+  --gray-600: #475569;
+  --gray-900: #0f172a;
+  --green-100: #dcfce7;
+  --green-700: #15803d;
+
+  --bg-page: var(--gray-50);
+  --bg-surface: var(--gray-0);
+  --bg-brand: var(--indigo-700);
+  --bg-brand-hover: var(--indigo-800);
+  --bg-brand-subtle: var(--indigo-50);
+  --bg-inverse: var(--indigo-950);
+  --bg-success-subtle: var(--green-100);
+  --bg-danger-subtle: var(--rose-100);
+  --bg-warning-subtle: var(--amber-100);
+  --text-primary: var(--gray-900);
+  --text-secondary: var(--gray-600);
+  --text-muted: var(--gray-500);
+  --text-on-brand: var(--gray-0);
+  --text-brand: var(--indigo-700);
+  --text-success: var(--green-700);
+  --text-danger: var(--rose-600);
+  --text-warning: var(--amber-700);
+  --border-default: var(--gray-200);
+  --border-strong: var(--gray-300);
+  --border-brand: var(--indigo-700);
+
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-full: 999px;
+  --shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
+  --shadow-md: 0 6px 16px rgb(15 23 42 / 0.1);
+
+  --font-sans: 'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  --content-max: 75rem;
+  --gutter: 1rem;
+  --header-height: 4rem;
+}
