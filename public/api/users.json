@@ -1,0 +1,23 @@
+[
+  {
+    "id": "u-cliente",
+    "name": "Cliente Demo",
+    "email": "cliente@stage.test",
+    "role": "cliente",
+    "passwordHash": "h351dd8c9"
+  },
+  {
+    "id": "u-admin",
+    "name": "Administrador STAGE",
+    "email": "admin@stage.test",
+    "role": "administrador",
+    "passwordHash": "h925f0aba"
+  },
+  {
+    "id": "u-org",
+    "name": "Organizador Demo",
+    "email": "organizador@stage.test",
+    "role": "organizador",
+    "passwordHash": "he52dfeab"
+  }
+]
