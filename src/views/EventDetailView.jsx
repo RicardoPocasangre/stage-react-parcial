@@ -1,32 +1,29 @@
 import { useEffect, useState } from 'react'
+import { useLoaderData, useNavigate } from 'react-router'
 import Badge from '../components/Badge.jsx'
 import Button from '../components/Button.jsx'
-import ErrorState from '../components/ErrorState.jsx'
-import LoadingState from '../components/LoadingState.jsx'
 import Link from '../components/Link.jsx'
 import Notice from '../components/Notice.jsx'
 import QuantityInput from '../components/QuantityInput.jsx'
 import ZoneOption from '../components/ZoneOption.jsx'
 import { CATEGORY_ICON } from '../data/events.js'
-import { useAsync } from '../hooks/useAsync.js'
-import { api } from '../api/fakeApi.js'
+import { useCart } from '../state/StoreProvider.jsx'
+import { asset } from '../utils/assets.js'
 import { available, eventAvailable, formatDateTime, formatMoney, formatTime, minPrice } from '../utils/format.js'
 
 const MAX_PER_ORDER = 8
 
 // Detalle del evento: información, zonas con precios y tarjeta de compra.
-export default function EventDetailView({ eventId, events, cart, navigate, addToCart, simulateError }) {
-  const { status, data: event, error, retry } = useAsync(
-    () => api.getEvent(events, eventId, { fail: simulateError }),
-    [events, eventId, simulateError],
-  )
+export default function EventDetailView() {
+  const { event } = useLoaderData()
+  const { items: cartItems, add } = useCart()
+  const navigate = useNavigate()
   const [zoneId, setZoneId] = useState('')
   const [qty, setQty] = useState(1)
   const [notice, setNotice] = useState(null)
 
   // Al cargar el evento se preselecciona la primera zona con disponibilidad.
   useEffect(() => {
-    if (!event) return
     const first = event.zones.find((z) => available(z) > 0)
     setZoneId((current) => (event.zones.some((z) => z.id === current) ? current : first?.id ?? ''))
   }, [event])
@@ -38,36 +35,24 @@ export default function EventDetailView({ eventId, events, cart, navigate, addTo
     return () => clearTimeout(timer)
   }, [notice])
 
-  if (status === 'loading') return <LoadingState label="Cargando el evento…" />
-  if (status === 'error') {
-    return (
-      <>
-        <ErrorState message={error.message} onRetry={retry} />
-        <p className="back">
-          <Link navigate={navigate} to="events">← Volver a los eventos</Link>
-        </p>
-      </>
-    )
-  }
-
   const zone = event.zones.find((z) => z.id === zoneId)
-  const inCart = cart.find((i) => i.zoneId === zoneId)?.qty ?? 0
+  const inCart = cartItems.find((i) => i.zoneId === zoneId)?.qty ?? 0
   const maxQty = zone ? Math.max(1, Math.min(MAX_PER_ORDER, available(zone) - inCart)) : 1
   const soldOut = event.status === 'agotado' || eventAvailable(event) === 0
   const canBuy = !soldOut && event.status === 'publicado' && zone && available(zone) - inCart > 0
 
   const handleAdd = (goToCart) => {
     if (!canBuy) return
-    addToCart({ eventId: event.id, zoneId: zone.id, qty })
+    add({ eventId: event.id, zoneId: zone.id, qty })
     setQty(1)
-    if (goToCart) navigate('cart')
+    if (goToCart) navigate('/carrito')
     else setNotice(`Agregaste ${qty} × ${zone.name} al carrito.`)
   }
 
   return (
     <div className="detail">
       <p className="back">
-        <Link navigate={navigate} to="events">← Volver a los eventos</Link>
+        <Link to="/eventos">← Volver a los eventos</Link>
       </p>
 
       <article className="event-info" aria-labelledby="event-title">
@@ -87,15 +72,15 @@ export default function EventDetailView({ eventId, events, cart, navigate, addTo
 
         <ul className="event-data" aria-label="Datos del evento">
           <li className="meta">
-            <img src="/img/icon-calendar.png" alt="" width="16" height="16" />
+            <img src={asset('img/icon-calendar.png')} alt="" width="16" height="16" />
             <time dateTime={event.date}>{formatDateTime(event.date)}</time>
           </li>
           <li className="meta">
-            <img src="/img/icon-pin.png" alt="" width="16" height="16" />
+            <img src={asset('img/icon-pin.png')} alt="" width="16" height="16" />
             {event.venue}, {event.city}
           </li>
           <li className="meta">
-            <img src="/img/icon-ticket.png" alt="" width="16" height="16" />
+            <img src={asset('img/icon-ticket.png')} alt="" width="16" height="16" />
             Puertas abren a las {event.doors}
           </li>
         </ul>
@@ -124,11 +109,11 @@ export default function EventDetailView({ eventId, events, cart, navigate, addTo
         </p>
         <div className="purchase__extra">
           <p className="meta">
-            <img src="/img/icon-calendar.png" alt="" width="16" height="16" />
+            <img src={asset('img/icon-calendar.png')} alt="" width="16" height="16" />
             {formatTime(event.date)}
           </p>
           <p className="meta">
-            <img src="/img/icon-pin.png" alt="" width="16" height="16" />
+            <img src={asset('img/icon-pin.png')} alt="" width="16" height="16" />
             {event.venue}
           </p>
         </div>
