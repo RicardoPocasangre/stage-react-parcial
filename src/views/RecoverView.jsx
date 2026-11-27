@@ -1,18 +1,21 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import AuthCard from '../components/AuthCard.jsx'
 import Button from '../components/Button.jsx'
 import Field from '../components/Field.jsx'
 import Link from '../components/Link.jsx'
 import Notice from '../components/Notice.jsx'
-import { api } from '../api/fakeApi.js'
+import { api, isAbort } from '../api/index.js'
 import { isValidEmail } from '../utils/format.js'
 
 // Recuperación de contraseña simulada: no se envía ningún correo.
-export default function RecoverView({ navigate, simulateError }) {
+export default function RecoverView() {
+  const controller = useRef(null)
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
+
+  useEffect(() => () => controller.current?.abort(), [])
 
   const submit = async (event) => {
     event.preventDefault()
@@ -23,11 +26,12 @@ export default function RecoverView({ navigate, simulateError }) {
     }
     setError('')
     setLoading(true)
+    controller.current = new AbortController()
     try {
-      await api.recover(email, { fail: simulateError })
+      await api.users.recover(email, { signal: controller.current.signal })
       setSent(true)
     } catch (err) {
-      setError(err.message)
+      if (!isAbort(err)) setError(err.message)
     } finally {
       setLoading(false)
     }
@@ -37,7 +41,7 @@ export default function RecoverView({ navigate, simulateError }) {
     <AuthCard
       title="Recupera tu contraseña"
       intro="Escribe tu correo y te mostraremos cómo continuaría el proceso."
-      footer={<Link navigate={navigate} to="login" className="inline-link">← Volver a iniciar sesión</Link>}
+      footer={<Link to="/login" className="inline-link">← Volver a iniciar sesión</Link>}
     >
       {sent ? (
         <Notice tone="success">
