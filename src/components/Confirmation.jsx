@@ -1,10 +1,12 @@
 import { QRCodeSVG } from 'qrcode.react'
+import { useNavigate } from 'react-router'
 import Button from './Button.jsx'
 import Stepper, { PURCHASE_STEPS } from './Stepper.jsx'
 import { formatDateShort, formatMoney, formatTime } from '../utils/format.js'
 
 // Pantalla «¡Compra confirmada!»: resumen del pago y boleto electrónico con QR.
-export default function Confirmation({ receipt, navigate }) {
+export default function Confirmation({ receipt }) {
+  const navigate = useNavigate()
   return (
     <section className="confirm" aria-labelledby="confirm-title">
       <Stepper steps={PURCHASE_STEPS} current={3} />
@@ -27,14 +29,14 @@ export default function Confirmation({ receipt, navigate }) {
                 <p className="meta">
                   Zona {item.zoneName} · {item.qty} {item.qty === 1 ? 'boleto' : 'boletos'}
                 </p>
-                <p className="confirm__code">Orden {item.orderId.toUpperCase()}</p>
+                <p className="confirm__code">{item.code}</p>
               </div>
               <div className="confirm__qr">
                 <QRCodeSVG
-                  value={`${item.orderId.toUpperCase()}-01`}
+                  value={item.code}
                   size={104}
                   marginSize={2}
-                  title={`Código QR de la orden ${item.orderId}`}
+                  title={`Código QR del boleto ${item.code}`}
                 />
                 <p className="confirm__qr-note">Muestra este código en la entrada</p>
               </div>
@@ -48,8 +50,8 @@ export default function Confirmation({ receipt, navigate }) {
         <p className="checkout__note">Esta es una simulación: no se realizó ningún cobro ni se envió correo.</p>
 
         <div className="confirm__actions">
-          <Button onClick={() => navigate('tickets')}>Ver mis boletos</Button>
-          <Button variant="ghost" onClick={() => navigate('events')}>
+          <Button onClick={() => navigate('/boletos')}>Ver mis boletos</Button>
+          <Button variant="ghost" onClick={() => navigate('/eventos')}>
             Volver a eventos
           </Button>
         </div>
