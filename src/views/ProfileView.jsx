@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { useLoaderData, useNavigate } from 'react-router'
+import { api, isAbort } from '../api/index.js'
 import Badge from '../components/Badge.jsx'
 import Button from '../components/Button.jsx'
 import Field from '../components/Field.jsx'
 import Notice from '../components/Notice.jsx'
-import { simpleHash } from '../utils/format.js'
+import { useSession } from '../state/StoreProvider.jsx'
 
 const ROLE_LABEL = { cliente: 'Cliente', administrador: 'Administrador', organizador: 'Organizador' }
 
@@ -13,19 +15,12 @@ const splitName = (name) => {
 }
 
 // Perfil con menú lateral (Datos personales, Seguridad, Mis boletos, Cerrar sesión).
-export default function ProfileView({ user, setUsers, orders, navigate, onLogout }) {
+// La ruta está protegida: siempre hay un usuario en sesión.
+export default function ProfileView() {
+  const { orders } = useLoaderData()
+  const { user, logout } = useSession()
+  const navigate = useNavigate()
   const [section, setSection] = useState('datos')
-
-  if (!user) {
-    return (
-      <Notice tone="warning">
-        Inicia sesión para ver tu perfil.{' '}
-        <button type="button" className="inline-link inline-link--button" onClick={() => navigate('login')}>
-          Ir a iniciar sesión
-        </button>
-      </Notice>
-    )
-  }
 
   const mine = orders.filter((o) => o.userId === user.id)
   const spent = mine.reduce((sum, o) => sum + o.total, 0)
@@ -47,12 +42,15 @@ export default function ProfileView({ user, setUsers, orders, navigate, onLogout
               </button>
             </li>
             <li>
-              <button type="button" className="profile__link" onClick={() => navigate('tickets')}>
+              <button type="button" className="profile__link" onClick={() => navigate('/boletos')}>
                 Mis boletos
               </button>
             </li>
             <li>
-              <button type="button" className="profile__link" onClick={onLogout}>
+              <button type="button" className="profile__link" onClick={() => {
+                  logout()
+                  navigate('/')
+                }}>
                 Cerrar sesión
               </button>
             </li>
@@ -63,20 +61,23 @@ export default function ProfileView({ user, setUsers, orders, navigate, onLogout
         </nav>
 
         {section === 'datos' ? (
-          <PersonalForm user={user} setUsers={setUsers} />
+          <PersonalForm user={user} />
         ) : (
-          <SecurityForm user={user} setUsers={setUsers} />
+          <SecurityForm user={user} />
         )}
       </div>
     </section>
   )
 }
 
-function PersonalForm({ user, setUsers }) {
+function PersonalForm({ user }) {
+  const { updateUser } = useSession()
   const initial = splitName(user.name)
   const [form, setForm] = useState({ first: initial.first, last: initial.last, phone: user.phone ?? '' })
   const [errors, setErrors] = useState({})
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [apiError, setApiError] = useState('')
 
   const update = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -84,7 +85,7 @@ function PersonalForm({ user, setUsers }) {
     setSaved(false)
   }
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault()
     const found = {}
     if (form.first.trim().length < 2) found.first = 'Escribe tu nombre.'
@@ -95,14 +96,18 @@ function PersonalForm({ user, setUsers }) {
     setErrors(found)
     if (Object.keys(found).length > 0) return
 
-    setUsers((prev) =>
-      prev.map((u) =>
-        u.id === user.id
-          ? { ...u, name: `${form.first.trim()} ${form.last.trim()}`, phone: form.phone.trim() }
-          : u,
-      ),
-    )
-    setSaved(true)
+    setSaving(true)
+    setApiError('')
+    try {
+      const patch = { name: `${form.first.trim()} ${form.last.trim()}`, phone: form.phone.trim() }
+      await api.users.updateProfile(user.id, patch)
+      updateUser(patch)
+      setSaved(true)
+    } catch (error) {
+      if (!isAbort(error)) setApiError(error.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const cancel = () => {
@@ -115,6 +120,7 @@ function PersonalForm({ user, setUsers }) {
     <form className="form" onSubmit={submit} noValidate>
       <h2 className="form__title">Datos personales</h2>
       {saved && <Notice tone="success" onClose={() => setSaved(false)}>Guardamos tus cambios.</Notice>}
+      {apiError && <Notice tone="danger">{apiError}</Notice>}
       <div className="form__row">
         <Field label="Nombre" value={form.first} error={errors.first} autoComplete="given-name" onChange={(e) => update('first', e.target.value)} />
         <Field label="Apellido" value={form.last} error={errors.last} autoComplete="family-name" onChange={(e) => update('last', e.target.value)} />
@@ -128,16 +134,17 @@ function PersonalForm({ user, setUsers }) {
       </p>
       <div className="form__actions">
         <Button variant="ghost" onClick={cancel}>Cancelar</Button>
-        <Button type="submit">Guardar cambios</Button>
+        <Button type="submit" loading={saving}>Guardar cambios</Button>
       </div>
     </form>
   )
 }
 
-function SecurityForm({ user, setUsers }) {
+function SecurityForm({ user }) {
   const [form, setForm] = useState({ current: '', next: '', confirm: '' })
   const [errors, setErrors] = useState({})
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   const update = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -145,10 +152,10 @@ function SecurityForm({ user, setUsers }) {
     setSaved(false)
   }
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault()
     const found = {}
-    if (simpleHash(form.current) !== user.passwordHash) found.current = 'La contraseña actual no es correcta.'
+    if (!form.current) found.current = 'Escribe tu contraseña actual.'
     if (form.next.length < 8 || !/\d/.test(form.next) || !/[A-Za-z]/.test(form.next)) {
       found.next = 'La contraseña debe tener al menos 8 caracteres, con letras y números.'
     }
@@ -156,9 +163,16 @@ function SecurityForm({ user, setUsers }) {
     setErrors(found)
     if (Object.keys(found).length > 0) return
 
-    setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, passwordHash: simpleHash(form.next) } : u)))
-    setForm({ current: '', next: '', confirm: '' })
-    setSaved(true)
+    setSaving(true)
+    try {
+      await api.users.changePassword(user.id, { current: form.current, next: form.next })
+      setForm({ current: '', next: '', confirm: '' })
+      setSaved(true)
+    } catch (error) {
+      if (!isAbort(error)) setErrors({ current: error.message })
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -169,7 +183,7 @@ function SecurityForm({ user, setUsers }) {
       <Field label="Nueva contraseña" type="password" autoComplete="new-password" hint="Mínimo 8 caracteres, con letras y números." value={form.next} error={errors.next} onChange={(e) => update('next', e.target.value)} />
       <Field label="Confirmar nueva contraseña" type="password" autoComplete="new-password" value={form.confirm} error={errors.confirm} onChange={(e) => update('confirm', e.target.value)} />
       <div className="form__actions">
-        <Button type="submit">Actualizar contraseña</Button>
+        <Button type="submit" loading={saving}>Actualizar contraseña</Button>
       </div>
     </form>
   )
