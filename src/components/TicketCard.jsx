@@ -1,10 +1,11 @@
 import { QRCodeSVG } from 'qrcode.react'
 import Badge from './Badge.jsx'
-import { formatDateTime } from '../utils/format.js'
+import { asset } from '../utils/assets.js'
+import { formatDateTime, formatMoney } from '../utils/format.js'
 
 // Boleto electrónico: datos del evento y código QR generado en el cliente.
 export default function TicketCard({ ticket }) {
-  const { event, zoneName, code, number, total, past } = ticket
+  const { event, zoneName, code, number, total, past, unitPrice } = ticket
 
   return (
     <article className={`ticket${past ? ' is-past' : ''}`} aria-label={`Boleto ${code}`}>
@@ -15,15 +16,15 @@ export default function TicketCard({ ticket }) {
         </p>
         <h3 className="ticket__title">{event.title}</h3>
         <p className="meta">
-          <img src="/img/icon-calendar.png" alt="" width="16" height="16" />
+          <img src={asset('img/icon-calendar.png')} alt="" width="16" height="16" />
           <time dateTime={event.date}>{formatDateTime(event.date)}</time>
         </p>
         <p className="meta">
-          <img src="/img/icon-pin.png" alt="" width="16" height="16" />
+          <img src={asset('img/icon-pin.png')} alt="" width="16" height="16" />
           {event.venue}, {event.city}
         </p>
         <p className="ticket__zone">
-          Zona <strong>{zoneName}</strong> · Boleto {number} de {total}
+          Zona <strong>{zoneName}</strong> · Boleto {number} de {total} · {formatMoney(unitPrice)}
         </p>
         <p className="ticket__code">{code}</p>
       </div>
