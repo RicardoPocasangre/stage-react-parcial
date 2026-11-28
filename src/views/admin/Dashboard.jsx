@@ -1,14 +1,17 @@
+import { useLoaderData } from 'react-router'
 import Badge from '../../components/Badge.jsx'
 import BarChart from '../../components/BarChart.jsx'
 import ColumnChart from '../../components/ColumnChart.jsx'
 import StatCard from '../../components/StatCard.jsx'
 import { formatMoney } from '../../utils/format.js'
+import TicketVerifier from './TicketVerifier.jsx'
 import { salesLast7Days, summary, topEvents } from './stats.js'
 
 const STATUS = { pagada: ['success', 'Pagado'], pendiente: ['warning', 'Pendiente'] }
 
 // Resumen: KPIs, ventas de los últimos 7 días, eventos con más ventas y compras recientes.
-export default function Dashboard({ events, orders, users }) {
+export default function Dashboard() {
+  const { events, orders, users } = useLoaderData()
   const s = summary(events)
   const recent = [...orders].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).slice(0, 5)
   const titleOf = (id) => events.find((e) => e.id === id)?.title ?? 'Evento eliminado'
@@ -57,6 +60,8 @@ export default function Dashboard({ events, orders, users }) {
           </tbody>
         </table>
       </div>
+
+      <TicketVerifier orders={orders} events={events} />
     </>
   )
 }

@@ -1,17 +1,26 @@
 import { useState } from 'react'
+import { useLoaderData, useRevalidator } from 'react-router'
+import { api, isAbort } from '../../api/index.js'
 import Button from '../../components/Button.jsx'
+import EmptyState from '../../components/EmptyState.jsx'
 import Field from '../../components/Field.jsx'
 import Notice from '../../components/Notice.jsx'
 import { available } from '../../utils/format.js'
 
 // Inventario y precios por zona. Valida que el precio sea positivo y que la
 // capacidad no baje de los boletos ya vendidos.
-export default function InventoryTab({ events, setEvents }) {
+export default function InventoryTab() {
+  const { events } = useLoaderData()
+  const { revalidate } = useRevalidator()
   const [eventId, setEventId] = useState(events[0]?.id ?? '')
   const [drafts, setDrafts] = useState({})
   const [errors, setErrors] = useState({})
   const [saved, setSaved] = useState(false)
+  const [savingId, setSavingId] = useState(null)
+  const [apiError, setApiError] = useState('')
   const event = events.find((e) => e.id === eventId)
+
+  if (events.length === 0) return <EmptyState title="No hay eventos">Crea un evento para administrar su inventario.</EmptyState>
 
   const draft = (zone) => drafts[zone.id] ?? { price: String(zone.price), capacity: String(zone.capacity) }
   const update = (zone, key, value) => {
@@ -20,7 +29,7 @@ export default function InventoryTab({ events, setEvents }) {
     setErrors((prev) => ({ ...prev, [zone.id]: { ...prev[zone.id], [key]: undefined } }))
   }
 
-  const save = (zone) => {
+  const save = async (zone) => {
     const { price, capacity } = draft(zone)
     const found = {}
     if (!(Number(price) > 0)) found.price = 'El precio debe ser mayor que cero.'
@@ -30,18 +39,21 @@ export default function InventoryTab({ events, setEvents }) {
     setErrors((prev) => ({ ...prev, [zone.id]: found }))
     if (Object.keys(found).length > 0) return
 
-    setEvents((prev) =>
-      prev.map((e) =>
-        e.id === eventId
-          ? { ...e, zones: e.zones.map((z) => (z.id === zone.id ? { ...z, price: Number(price), capacity: Number(capacity) } : z)) }
-          : e,
-      ),
-    )
-    setDrafts((prev) => {
-      const { [zone.id]: _removed, ...rest } = prev
-      return rest
-    })
-    setSaved(true)
+    setSavingId(zone.id)
+    setApiError('')
+    try {
+      await api.events.updateZone(eventId, zone.id, { price: Number(price), capacity: Number(capacity) })
+      setDrafts((prev) => {
+        const { [zone.id]: _removed, ...rest } = prev
+        return rest
+      })
+      setSaved(true)
+      revalidate()
+    } catch (error) {
+      if (!isAbort(error)) setApiError(error.message)
+    } finally {
+      setSavingId(null)
+    }
   }
 
   return (
@@ -62,6 +74,7 @@ export default function InventoryTab({ events, setEvents }) {
         ))}
       </Field>
       {saved && <Notice tone="success" onClose={() => setSaved(false)}>Cambios guardados.</Notice>}
+      {apiError && <Notice tone="danger" onClose={() => setApiError('')}>{apiError}</Notice>}
       <ul className="inventory">
         {event?.zones.map((zone) => (
           <li key={zone.id} className="inventory__row">
@@ -89,7 +102,7 @@ export default function InventoryTab({ events, setEvents }) {
               error={errors[zone.id]?.capacity}
               onChange={(e) => update(zone, 'capacity', e.target.value)}
             />
-            <Button variant="secondary" onClick={() => save(zone)}>
+            <Button variant="secondary" loading={savingId === zone.id} onClick={() => save(zone)}>
               Guardar<span className="visually-hidden"> {zone.name}</span>
             </Button>
           </li>

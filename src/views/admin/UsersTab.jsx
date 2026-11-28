@@ -1,5 +1,8 @@
-// Usuarios registrados con su rol y número de órdenes.
-export default function UsersTab({ users, orders }) {
+import { useLoaderData } from 'react-router'
+
+// Usuarios registrados con su rol y número de órdenes (solo lectura).
+export default function UsersTab() {
+  const { users, orders } = useLoaderData()
   return (
     <div className="table-wrap">
       <table className="table">
