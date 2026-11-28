@@ -1,19 +1,25 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router'
 import AuthCard from '../components/AuthCard.jsx'
 import Button from '../components/Button.jsx'
 import Field from '../components/Field.jsx'
 import Link from '../components/Link.jsx'
 import Notice from '../components/Notice.jsx'
-import { api } from '../api/fakeApi.js'
-import { makeId, simpleHash } from '../utils/format.js'
+import { api, isAbort } from '../api/index.js'
+import { useSession } from '../state/StoreProvider.jsx'
 import { validateRegister } from '../utils/validation.js'
 
 // Registro simulado: crea una cuenta de cliente en este navegador.
-export default function RegisterView({ users, setUsers, setSessionId, navigate, simulateError }) {
+export default function RegisterView() {
+  const { login } = useSession()
+  const navigate = useNavigate()
+  const controller = useRef(null)
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' })
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => () => controller.current?.abort(), [])
 
   const submit = async (event) => {
     event.preventDefault()
@@ -24,19 +30,13 @@ export default function RegisterView({ users, setUsers, setSessionId, navigate, 
     if (Object.keys(found).length > 0) return
 
     setLoading(true)
+    controller.current = new AbortController()
     try {
-      await api.register(users, { email: form.email }, { fail: simulateError })
-      const user = {
-        id: makeId('u'),
-        name: form.name.trim(),
-        email: form.email.trim().toLowerCase(),
-        role: 'cliente',
-        passwordHash: simpleHash(form.password),
-      }
-      setUsers((prev) => [...prev, user])
-      setSessionId(user.id)
-      navigate('events')
+      const user = await api.users.register(form, { signal: controller.current.signal })
+      login(user)
+      navigate('/', { replace: true })
     } catch (error) {
+      if (isAbort(error)) return
       setFormError(error.message)
       setLoading(false)
     }
@@ -48,7 +48,7 @@ export default function RegisterView({ users, setUsers, setSessionId, navigate, 
       intro="Es una cuenta de demostración: se guarda solo en este navegador."
       footer={
         <>
-          ¿Ya tienes cuenta? <Link navigate={navigate} to="login" className="inline-link">Inicia sesión</Link>
+          ¿Ya tienes cuenta? <Link to="/login" className="inline-link">Inicia sesión</Link>
         </>
       }
     >

@@ -1,0 +1,129 @@
+/* ===== PWA, navegación por rutas y panel ===== */
+
+/* Barra de progreso mientras un loader carga datos */
+.route-progress {
+  position: fixed;
+  inset: 0 0 auto 0;
+  z-index: 60;
+  height: 3px;
+  background: var(--indigo-500);
+  transform: scaleX(0);
+  transform-origin: left;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.route-progress.is-active {
+  opacity: 1;
+  animation: route-progress 1.2s ease-out forwards;
+}
+
+@keyframes route-progress {
+  to {
+    transform: scaleX(0.85);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-progress.is-active {
+    animation: none;
+    transform: scaleX(0.6);
+  }
+}
+
+/* Aviso de conexión */
+.offline-banner {
+  padding: var(--space-2) var(--gutter);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: center;
+  color: var(--amber-700);
+  background-color: var(--amber-100);
+}
+
+/* Aviso de actualización y de disponibilidad offline */
+.pwa-toast {
+  position: fixed;
+  inset: auto var(--space-4) var(--space-4) var(--space-4);
+  z-index: 70;
+  display: grid;
+  gap: var(--space-3);
+  max-width: 26rem;
+  margin-inline: auto;
+  padding: var(--space-4);
+  background-color: var(--bg-inverse);
+  color: var(--gray-0);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg, 0 10px 30px rgb(15 23 42 / 0.3));
+}
+
+.pwa-toast__text {
+  font-weight: 600;
+}
+
+.pwa-toast__actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+}
+
+.pwa-toast .btn--ghost {
+  color: var(--gray-0);
+}
+
+@media (min-width: 768px) {
+  .pwa-toast {
+    inset: auto var(--space-6) var(--space-6) auto;
+    margin: 0;
+  }
+}
+
+.install-button {
+  padding: var(--space-2) var(--space-4);
+  font-weight: 700;
+  color: var(--gray-0);
+  background-color: var(--indigo-600);
+  border: 0;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+}
+
+.install-button:focus-visible {
+  outline: 3px solid var(--indigo-100);
+  outline-offset: 2px;
+}
+
+/* Reportes y panel */
+.report-filters {
+  display: grid;
+  gap: var(--space-4);
+  align-items: end;
+  margin-bottom: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .report-filters {
+    grid-template-columns: 1fr 1fr auto;
+  }
+}
+
+.table__confirm {
+  font-weight: 600;
+  color: var(--text-danger);
+}
+
+.verifier {
+  max-width: 32rem;
+}
+
+.admin__link {
+  display: block;
+  text-decoration: none;
+}
+
+/* Los reportes dinámicos se apilan en una sola columna */
+@media (min-width: 1024px) {
+  .reports {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

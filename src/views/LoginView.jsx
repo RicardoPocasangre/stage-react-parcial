@@ -1,19 +1,32 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import AuthCard from '../components/AuthCard.jsx'
 import Button from '../components/Button.jsx'
 import Field from '../components/Field.jsx'
 import Link from '../components/Link.jsx'
 import Notice from '../components/Notice.jsx'
-import { api } from '../api/fakeApi.js'
-import { simpleHash } from '../utils/format.js'
+import { api, isAbort } from '../api/index.js'
+import { useSession } from '../state/StoreProvider.jsx'
 import { validateLogin } from '../utils/validation.js'
 
-// Inicio de sesión simulado. Tras entrar vuelve a la pantalla de origen.
-export default function LoginView({ users, setSessionId, navigate, simulateError, redirect = 'events' }) {
+// Solo se aceptan rutas internas como destino tras iniciar sesión.
+const safeRedirect = (value) => (value && value.startsWith('/') && !value.startsWith('//') ? value : '/')
+
+// Inicio de sesión simulado. Tras entrar vuelve a la pantalla de origen (?redirect=).
+export default function LoginView() {
+  const [params] = useSearchParams()
+  const redirect = safeRedirect(params.get('redirect'))
+  const { user, login } = useSession()
+  const navigate = useNavigate()
   const [form, setForm] = useState({ email: '', password: '' })
   const [errors, setErrors] = useState({})
   const [formError, setFormError] = useState('')
   const [loading, setLoading] = useState(false)
+  const controller = useRef(null)
+
+  useEffect(() => () => controller.current?.abort(), [])
+
+  if (user && !loading) return <Navigate to={redirect} replace />
 
   const submit = async (event) => {
     event.preventDefault()
@@ -24,15 +37,13 @@ export default function LoginView({ users, setSessionId, navigate, simulateError
     if (Object.keys(found).length > 0) return
 
     setLoading(true)
+    controller.current = new AbortController()
     try {
-      const user = await api.login(
-        users,
-        { email: form.email, passwordHash: simpleHash(form.password) },
-        { fail: simulateError },
-      )
-      setSessionId(user.id)
-      navigate(redirect)
+      const signedIn = await api.users.login(form, { signal: controller.current.signal })
+      login(signedIn)
+      navigate(redirect, { replace: true })
     } catch (error) {
+      if (isAbort(error)) return
       setFormError(error.message)
       setLoading(false)
     }
@@ -44,7 +55,7 @@ export default function LoginView({ users, setSessionId, navigate, simulateError
       intro="Accede para comprar boletos y ver los que ya tienes."
       footer={
         <>
-          ¿No tienes cuenta? <Link navigate={navigate} to="register" className="inline-link">Regístrate</Link>
+          ¿No tienes cuenta? <Link to="/registro" className="inline-link">Regístrate</Link>
         </>
       }
     >
@@ -69,7 +80,7 @@ export default function LoginView({ users, setSessionId, navigate, simulateError
         <Button type="submit" block loading={loading}>
           {loading ? 'Entrando…' : 'Iniciar sesión'}
         </Button>
-        <Link navigate={navigate} to="recover" className="inline-link auth__recover">
+        <Link to="/recuperar" className="inline-link auth__recover">
           ¿Olvidaste tu contraseña?
         </Link>
       </form>

@@ -1,18 +1,11 @@
-// Enlace de navegación por estado (sin React Router en esta entrega).
-// Conserva la semántica de <a> y evita la recarga de la página.
-export default function Link({ navigate, to, params, className = '', current = false, children, ...rest }) {
+import { Link as RouterLink } from 'react-router'
+
+// Enlace interno del Design System: envuelve el Link de React Router para que
+// la navegación no recargue la página y conserve la semántica de <a>.
+export default function Link({ to, className = '', children, ...rest }) {
   return (
-    <a
-      href="#"
-      className={className}
-      aria-current={current ? 'page' : undefined}
-      onClick={(event) => {
-        event.preventDefault()
-        navigate(to, params)
-      }}
-      {...rest}
-    >
+    <RouterLink to={to} className={className} {...rest}>
       {children}
-    </a>
+    </RouterLink>
   )
 }
