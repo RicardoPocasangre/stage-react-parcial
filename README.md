@@ -1,14 +1,26 @@
-# STAGE · Implementación React del MVP
+# STAGE · Plataforma de venta de boletos (entrega final)
 
-Aplicación React que reproduce los flujos principales del prototipo de Figma de **STAGE**, una plataforma de venta y gestión de boletos para eventos. Es la entrega parcial del Proyecto 3: componentes reutilizables, estado local, eventos, listas, formularios, efectos y persistencia en el navegador. No hay backend, base de datos, pago real ni envío real de correos.
+PWA de **STAGE**, una plataforma de venta y gestión de boletos para eventos. Es la tercera entrega del proyecto: sobre la aplicación React de la segunda entrega se añadieron **React Router en modo datos**, estado global con **Context y `useReducer`**, una **API falsa** con capa de acceso a datos, **panel administrativo con CRUD y reportes**, **boletos con QR verificable**, **service worker con caché y modo offline** y publicación en **GitHub Pages**.
 
-## Descripción
+No hay backend, base de datos, pago real ni envío real de correos: la autenticación, los pagos y todas las mutaciones son **simulados** y se guardan en `localStorage`.
 
-- **Público:** listado de eventos con búsqueda y filtros, detalle con zonas y precios, carrito y compra en cuatro pasos con pago simulado, boleto con código QR.
-- **Cuenta:** inicio de sesión, registro, recuperación de contraseña y perfil, todo con sesión simulada.
-- **Administración:** dashboard, listado de eventos, inventario y precios, usuarios y reportes con gráficos estáticos.
+- **Aplicación publicada:** https://ricardopocasangre.github.io/stage-react-parcial/ (la publica el workflow de GitHub Actions al hacer push a `main`).
+- **Documento de arquitectura y decisiones:** [`docs/arquitectura.md`](docs/arquitectura.md)
 
-Se cubren los **ocho módulos** del MVP: usuarios y autenticación, eventos, inventario y precios, proceso de compra, pagos, boletos electrónicos, panel de administración y reportes.
+## Alcance
+
+Se cubren los **ocho módulos** del MVP:
+
+| Módulo | Qué incluye |
+| --- | --- |
+| 1. Usuarios y autenticación | Sesión simulada con roles cliente, organizador y administrador, registro, recuperación, perfil persistente y rutas protegidas |
+| 2. Eventos | Listado con búsqueda y filtros en la URL, detalle, estados y CRUD administrativo |
+| 3. Inventario y precios | Zonas, precios y disponibilidad; edición desde el panel |
+| 4. Proceso de compra | Carrito global (Context + `useReducer`), flujo de cuatro pasos, resumen y persistencia |
+| 5. Pagos | Pago simulado, estados de la orden y prevención del doble envío |
+| 6. Boletos electrónicos | QR generado en el cliente, vista de boletos en `/boletos` y confirmación simulada por correo |
+| 7. Panel de administración | Dashboard, eventos, inventario, usuarios y verificación de boletos |
+| 8. Reportes | Reportes dinámicos por evento y periodo calculados a partir de las órdenes, con exportación CSV |
 
 ## Instalación y ejecución
 
@@ -16,107 +28,140 @@ Requiere Node.js 20 o superior.
 
 ```bash
 npm install
-npm run dev       # http://localhost:5173
-npm run build     # genera dist/
-npm run preview   # sirve el build
+npm run dev       # http://localhost:5173/stage-react-parcial/
+npm run build     # genera dist/ (incluye 404.html y .nojekyll)
+npm run preview   # sirve el build en http://localhost:4173/stage-react-parcial/
 ```
 
-## Cuentas de demostración
+El service worker solo se registra en el build de producción: para probar la PWA y el modo offline usa `npm run build && npm run preview`.
 
-Las contraseñas son ficticias y solo existen en este proyecto académico.
+## Cuentas de demostración y roles
 
-| Rol | Correo | Contraseña |
+Las contraseñas son ficticias, solo existen en este proyecto académico y se guardan con un hash simulado: no se almacenan contraseñas ni datos personales reales.
+
+| Rol | Correo | Contraseña | Acceso |
+| --- | --- | --- | --- |
+| Cliente | cliente@stage.test | Cliente123 | Compra, `/boletos`, `/perfil` |
+| Organizador | organizador@stage.test | Organizador123 | Lo anterior + `/admin`, `/admin/eventos`, `/admin/inventario` |
+| Administrador | admin@stage.test | Admin123 | Todo, incluidos `/admin/reportes` y `/admin/usuarios` |
+
+Para probar el pago, la tarjeta `4242 4242 4242 4242` se aprueba y una terminada en `0000` se rechaza. El interruptor **Simular error de red** del pie de página hace fallar la API para ver los estados de error.
+
+## Mapa de rutas
+
+| Ruta | Contenido | Acceso |
 | --- | --- | --- |
-| Cliente | cliente@stage.test | Cliente123 |
-| Administrador | admin@stage.test | Admin123 |
-| Organizador | organizador@stage.test | Organizador123 |
+| `/` | Inicio y destacados | Público |
+| `/eventos` | Listado y búsqueda (`?q=&categoria=&orden=`) | Público |
+| `/eventos/:id` | Detalle del evento | Público |
+| `/carrito` | Carrito y resumen | Público |
+| `/checkout` | Pago simulado y confirmación | Público (exige sesión para pagar) |
+| `/login`, `/registro`, `/recuperar` | Autenticación (`/login?redirect=…`) | Público |
+| `/boletos` | Boletos del usuario con QR | Autenticado |
+| `/perfil` | Perfil | Autenticado |
+| `/admin` | Dashboard | Administrador u organizador |
+| `/admin/eventos` | CRUD de eventos | Administrador u organizador |
+| `/admin/inventario` | Inventario y precios | Administrador u organizador |
+| `/admin/reportes` | Reportes | Administrador |
+| `/admin/usuarios` | Usuarios | Administrador |
+| `*` | 404 | Público |
 
-Para probar el pago: la tarjeta `4242 4242 4242 4242` se aprueba; una terminada en `0000` se rechaza. El interruptor **Simular error de red** del pie de página fuerza los estados de error en todas las operaciones asíncronas.
+Las rutas se definen con `createBrowserRouter` y `RouterProvider` (`src/router.jsx`), con un layout compartido (`RootLayout`), `basename` tomado de `base` de Vite y `ProtectedRoute` para sesión y rol. Sin sesión se redirige a `/login?redirect=<ruta>`; con sesión pero sin el rol se muestra un 403. Las secciones del panel se cargan bajo demanda (`lazy`).
 
-## Estructura
+## Arquitectura de carpetas
 
 ```
 .
-├── docs/                  # arquitectura y capturas en los tres breakpoints
-├── public/img/            # logotipo, favicon e íconos de la marca
+├── .github/workflows/deploy.yml   # compila y publica dist/ en GitHub Pages
+├── docs/                          # arquitectura y capturas
+├── public/
+│   ├── api/                       # API falsa: events.json, users.json, orders.json
+│   ├── icons/                     # íconos de la PWA (192, 512, maskable)
+│   └── img/                       # logotipo, favicon e íconos de la marca
+├── scripts/postbuild.mjs          # crea dist/404.html y dist/.nojekyll
 └── src/
-    ├── api/               # API simulada (promesas con latencia y errores)
-    ├── components/        # componentes reutilizables del Design System
-    ├── data/              # eventos, usuarios y órdenes de ejemplo
-    ├── hooks/             # useLocalStorage y useAsync
-    ├── styles/            # tokens, base y una hoja por área
-    ├── utils/             # formato y validación
-    ├── views/             # pantallas (y views/admin/ con las secciones del panel)
-    ├── App.jsx            # estado compartido y selección de vista
+    ├── api/        # http.js (fetch + AbortController), db.js (semilla + localStorage), index.js (API)
+    ├── state/      # reducer.js, StoreProvider.jsx (Context + useReducer), session.js
+    ├── components/ # Design System (Button, Field, Header, ProtectedRoute, PwaStatus…)
+    ├── views/      # pantallas; views/admin/ con las secciones del panel
+    ├── utils/      # formato, validación, carrito, boletos/QR, rutas de assets
+    ├── data/       # constantes del dominio (categorías, íconos)
+    ├── styles/     # tokens y una hoja por área
+    ├── loaders.js  # loaders del router
+    ├── router.jsx  # definición de rutas
     └── main.jsx
 ```
 
-## Inventario de componentes
+## Estado global
 
-| Componente | Uso |
-| --- | --- |
-| `Button`, `Badge`, `Chip`, `Notice` | Elementos básicos con variantes y tonos |
-| `Field`, `QuantityInput`, `SearchBar` | Entradas controladas con etiqueta, ayuda y error accesibles |
-| `Header`, `Footer`, `Link`, `Stepper` | Estructura y navegación |
-| `EventCard`, `ZoneOption`, `CartLine`, `OrderSummary`, `PaymentForm`, `Confirmation` | Catálogo, carrito, pago y confirmación |
-| `TicketCard` | Boleto con QR generado en el cliente |
-| `LoadingState`, `ErrorState`, `EmptyState` | Estados asíncronos |
-| `StatCard`, `BarChart`, `ColumnChart` | Panel y reportes |
-| `AuthCard` | Pantallas de autenticación |
+`StoreProvider` combina **Context y `useReducer`** y guarda en `localStorage`:
 
-## Mapa de estado y persistencia
+| Estado | Acciones | Clave |
+| --- | --- | --- |
+| Sesión (`user`) | `session/login`, `session/update`, `session/logout` | `stage.session.v3` |
+| Carrito (`cart`) | `cart/add`, `cart/setQty`, `cart/remove`, `cart/clear` | `stage.cart.v3` |
+| Preferencias (`prefs`) | `prefs/simulateError` | `stage.prefs.v3` |
 
-El estado compartido vive en `App` y baja a las vistas por props (estado elevado). Los datos persistentes usan `useLocalStorage`:
+Los componentes consumen el estado con `useSession()`, `useCart()` y `usePrefs()`, sin pasar props entre niveles. Los datos de negocio (eventos, órdenes, usuarios) no están en el Context: llegan del router y de la API.
 
-| Clave en `localStorage` | Contenido |
-| --- | --- |
-| `stage.events.v2` | Catálogo con zonas, precios y boletos vendidos |
-| `stage.orders.v2` | Órdenes pagadas |
-| `stage.users` | Cuentas (contraseña con hash simulado) |
-| `stage.session` | Id del usuario con sesión |
-| `stage.cart` | Líneas del carrito |
-| `stage.prefs` | Preferencias (simulación de errores) |
+## API falsa y mapeo de datos
 
-El estado de cada vista (filtros, paso del checkout, formularios, pestañas) es local o se eleva solo cuando otra vista lo necesita. Los filtros del listado viven en `App` para conservarse al volver desde el detalle.
+`src/api` es una capa asíncrona separada de los componentes. Los JSON de `public/api/` son la **semilla** y las escrituras se persisten en `localStorage` (`stage.db.<colección>.v3`).
 
-## Datos simulados
+| Colección | Lectura | Escritura |
+| --- | --- | --- |
+| `events` | `api.events.list / get` | `create`, `update`, `remove`, `updateZone` (inventario y precios) |
+| `users` | `api.users.list`, `login` | `register`, `updateProfile`, `changePassword`, `recover` |
+| `orders` | `api.orders.list / listByUser` | `checkout` (cobro simulado, crea órdenes y descuenta inventario) |
 
-Los ocho eventos del prototipo de Figma (con sus recintos y precios), las categorías Concierto, Teatro y Deporte, de dos a tres zonas por evento con precio, capacidad y boletos vendidos; tres cuentas de demostración y doce órdenes de ejemplo de los últimos días para el panel y los reportes. Se encuentran en `src/data/events.js`.
+- Todas las funciones aceptan un `signal` (`AbortController`). Los loaders usan el `request.signal` del router, así una navegación cancela la petición en curso; los formularios cancelan al desmontarse.
+- Las lecturas leen el JSON con `fetch`, con latencia simulada; los errores se muestran con mensajes comprensibles y reintento. Hay estados de carga (barra de progreso y `HydrateFallback`), de error (`RouteError`) y vacío (`EmptyState`).
+- Las órdenes semilla traen `daysAgo` y se convierten en fechas reales al leerlas, para que reportes y gráficos siempre tengan ventas recientes.
+
+## Boletos y QR
+
+Cada orden confirmada genera un boleto por unidad. El código tiene la forma `STG-<ORDEN>-<NN>-<CONTROL>` (`src/utils/tickets.js`), donde el código de control se deriva de la orden y del número de boleto. El QR se genera en el cliente con `qrcode.react` y codifica ese código. En `/admin` hay un verificador: comprueba el código de control y que la orden exista. La verificación es simulada, igual que el resto de la API.
+
+## PWA y estrategias de caché
+
+Configurada con `vite-plugin-pwa` (Workbox, `generateSW`) en `vite.config.js`:
+
+- **Manifest:** nombre, descripción, `start_url`, `scope`, `display: standalone`, colores e íconos de 192×192, 512×512 y una variante **maskable**.
+- **Precache del app shell:** HTML, JS, CSS e íconos de la PWA.
+- **API (`/api/*.json`): `NetworkFirst`**, con la última respuesta como respaldo sin conexión (`stage-api`).
+- **Imágenes: `CacheFirst`** (`stage-images`).
+- **Fuentes:** `StaleWhileRevalidate` para la hoja de estilos y `CacheFirst` para los archivos de fuente.
+- **`navigateFallback`:** `index.html`, para que cualquier ruta de la SPA cargue sin conexión.
+- **Avisos:** `PwaStatus` informa cuando la app ya funciona sin conexión, cuando hay una **nueva versión** (con botón «Actualizar», `registerType: 'prompt'`) y cuando el navegador pierde la conexión. `InstallButton` muestra «Instalar app» cuando Chrome o Edge lo permiten.
+
+**Cómo verificarlo:** `npm run build && npm run preview`, abrir DevTools → *Application* → *Manifest* y *Service Workers* (instalación verificable en Chrome o Edge), recorrer algunas pantallas con conexión y activar *Offline* en *Network*: el listado, los detalles ya visitados y el resto de la app siguen funcionando.
+
+## Despliegue en GitHub Pages
+
+1. En el repositorio: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
+2. Cada push a `main` ejecuta `.github/workflows/deploy.yml`: `npm ci`, `npm run build` y publicación de `dist/`.
+3. `base` (`vite.config.js`) y `basename` (React Router) usan `/stage-react-parcial/`; `postbuild` copia `index.html` a **`404.html`** (las rutas profundas recargan la SPA) y crea **`.nojekyll`**.
+4. Para publicar bajo otro nombre de repositorio: `VITE_BASE=/otro-nombre/ npm run build`.
 
 ## Responsive y accesibilidad
 
-Tres breakpoints: móvil 375 px (base), tablet 768 px y escritorio 1440 px (reglas desde 1024 px). HTML semántico, etiquetas asociadas a cada campo, mensajes de error con `role="alert"`, navegación por teclado, foco visible, enlace para saltar al contenido, textos alternativos y respeto de `prefers-reduced-motion`. Las capturas de las pantallas principales (listado, detalle, carrito, boletos y panel de administración) están en [`docs/capturas`](docs/capturas), en móvil 375 px, tablet 768 px y escritorio 1440 px.
+Móvil 375 px, tablet 768 px y escritorio 1440 px. HTML semántico, formularios etiquetados, navegación por teclado y foco visible, enlace para saltar al contenido, mensajes de error con `role="alert"`, estados `aria-current`, `aria-busy` y `aria-live`, texto alternativo en imágenes y en los QR, y respeto de `prefers-reduced-motion`. Al navegar, el foco pasa al contenido y se actualiza el título del documento. En móvil el panel se adapta con menú desplazable y tablas con desplazamiento controlado.
 
-## Limitaciones y decisiones de diseño
+## Capturas
 
-- **Sin React Router:** la navegación se resuelve con estado de vista, como permite esta entrega; el botón «atrás» del navegador no cambia de pantalla.
-- **Autenticación simulada:** el hash de contraseña es solo ilustrativo; no ofrece seguridad real.
-- **Pago simulado:** no se guarda ningún dato de tarjeta.
-- **Inventario:** la disponibilidad se descuenta al pagar y se vuelve a verificar justo antes de cobrar.
-- **Gráficos:** construidos con HTML y CSS, sin librerías; el QR usa `qrcode.react`.
-- **Fuente:** *Plus Jakarta Sans* desde Google Fonts; sin conexión se usa la del sistema.
+En [`docs/capturas`](docs/capturas): listado, detalle, carrito, checkout, confirmación con QR, boletos con QR, panel administrativo, CRUD de eventos, reportes, versiones en tablet y móvil, y modo offline.
 
-Documento de arquitectura: [`docs/arquitectura.md`](docs/arquitectura.md).
+Publicación y PWA, tomadas de la aplicación publicada en https://ricardopocasangre.github.io/stage-react-parcial/:
 
-## Fidelidad al prototipo de Figma
-
-La app sigue las pantallas de la página «03 Mockups y Prototipo» del Figma de la Primera entrega:
-
-| Pantalla de Figma | Vista en la app |
+| Captura | Contenido |
 | --- | --- |
-| W01 Inicio de sesión, W02 Registro, W03 Recuperar contraseña | LoginView, RegisterView, RecoverView |
-| W04 Perfil de usuario | ProfileView (datos personales y seguridad) |
-| W05 Listado y búsqueda, W05b Sin resultados | EventsView |
-| W06 Detalle del evento | EventDetailView |
-| W08 Carrito, W09 Pago, W10 Confirmación y boleto | CartView (con PaymentForm y Confirmation) |
-| W11 Mis boletos | TicketsView |
-| W12 Panel, W13 Eventos, W14 Inventario y precios, W15 Usuarios, W16 Reportes | AdminView y iews/admin/ |
+| ![Manifest en DevTools](docs/capturas/14-manifest-devtools.png) | **Chrome DevTools → Application → Manifest:** nombre, colores, `start_url`, modo `standalone` e íconos del manifiesto. |
+| ![Service worker en DevTools](docs/capturas/15-service-worker-devtools.png) | **Chrome DevTools → Application → Service workers:** `sw.js` activado y en ejecución sobre el alcance `/stage-react-parcial/`. |
+| ![Sitio publicado](docs/capturas/16-sitio-publicado.png) | **Sitio publicado** en GitHub Pages, abierto en Google Chrome. |
 
-Diferencias conocidas respecto al prototipo:
+## Limitaciones
 
-- **Selección de asientos (W07):** la app elige zona y cantidad; no hay mapa de asientos numerados.
-- **Reserva de 10 minutos del carrito (W08):** no se implementa la cuenta regresiva.
-- **Descargar boletos (W10):** no se implementa; los boletos se consultan en «Mis boletos».
-- **Eliminar evento (W13b):** el panel permite publicar, despublicar y finalizar eventos, pero no eliminarlos.
-- **Tendencias de los KPI (por ejemplo «+12 % vs. mes anterior»):** se omiten porque los datos simulados no tienen un mes anterior.
-- **Fechas de algunos eventos:** las del prototipo no se leían con claridad y se eligieron fechas coherentes.
+- Sin backend: la «base de datos» es `localStorage`, por lo que los datos no se comparten entre navegadores ni dispositivos y se pierden al borrar los datos del sitio.
+- La autenticación, los roles, el pago y el correo son simulados: no ofrecen seguridad real (el hash de contraseñas es solo demostrativo).
+- La verificación del QR comprueba el código y la orden local; un sistema real la haría contra un servidor.
+- Sin conexión solo se puede navegar lo que ya se visitó una vez con conexión; el modo offline no sincroniza nada porque no hay servidor.
